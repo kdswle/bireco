@@ -13,11 +13,11 @@ use crate::dtos::common::ApiResponse;
     post,
     path = "/api/auth/register",
     tag = "auth",
-    request_body = RegisterRequestDto,
+    request_body = CreateUserRequest,
     responses(
-        (status = 201, description = "User registered successfully", body = ApiResponse<AuthResponseDto>),
-        (status = 400, description = "Invalid request", body = ApiResponse<String>),
-        (status = 409, description = "User already exists", body = ApiResponse<String>)
+        (status = 201, description = "User registered successfully", body = crate::api_docs::AuthResponseWrapper),
+        (status = 400, description = "Invalid request", body = crate::api_docs::OptionalAuthResponseWrapper),
+        (status = 409, description = "User already exists", body = crate::api_docs::OptionalAuthResponseWrapper)
     )
 )]
 pub async fn register(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
@@ -44,10 +44,8 @@ pub async fn register(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     // Register user
     match auth_use_case.register(body).await {
         Ok(auth_response) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": auth_response
-            })).map(|r| r.with_status(201))
+            let api_response = ApiResponse::success_with_status(auth_response, 201);
+            Response::from_json(&api_response).map(|r| r.with_status(201))
         },
         Err(e) => {
             console_log!("Registration error: {:?}", e);
@@ -66,14 +64,12 @@ pub async fn register(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
                 }
             };
             
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": code,
-                    "message": message,
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(status))
+            let empty_response: Option<crate::entities::AuthResponse> = None;
+            let mut api_response = ApiResponse::error(status, code, message, empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(status))
         }
     }
 }
@@ -85,9 +81,9 @@ pub async fn register(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     tag = "auth",
     request_body = LoginRequestDto,
     responses(
-        (status = 200, description = "User authenticated successfully", body = ApiResponse<AuthResponseDto>),
-        (status = 400, description = "Invalid request", body = ApiResponse<String>),
-        (status = 401, description = "Invalid credentials", body = ApiResponse<String>)
+        (status = 200, description = "User authenticated successfully", body = crate::api_docs::AuthResponseWrapper),
+        (status = 400, description = "Invalid request", body = crate::api_docs::OptionalStringResponseWrapper),
+        (status = 401, description = "Invalid credentials", body = crate::api_docs::OptionalStringResponseWrapper)
     )
 )]
 pub async fn login(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
@@ -116,10 +112,8 @@ pub async fn login(mut req: Request, ctx: RouteContext<()>) -> Result<Response> 
     // Login user
     match auth_use_case.login(body).await {
         Ok(auth_response) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": auth_response
-            }))
+            let api_response = ApiResponse::success(auth_response);
+            Response::from_json(&api_response)
         },
         Err(e) => {
             console_log!("Login error: {:?}", e);
@@ -138,18 +132,29 @@ pub async fn login(mut req: Request, ctx: RouteContext<()>) -> Result<Response> 
                 }
             };
             
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": code,
-                    "message": message,
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(status))
+            let empty_response: Option<crate::entities::AuthResponse> = None;
+            let mut api_response = ApiResponse::error(status, code, message, empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(status))
         }
     }
 }
 
+/// Get current user information
+#[utoipa::path(
+    get,
+    path = "/api/auth/me",
+    tag = "auth",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "User information", body = crate::api_docs::UserResponseWrapper),
+        (status = 401, description = "Unauthorized", body = crate::api_docs::OptionalUserResponseWrapper)
+    )
+)]
 pub async fn me(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Get environment variables
     let jwt_secret = ctx.env.var("JWT_SECRET")?.to_string();
@@ -160,13 +165,11 @@ pub async fn me(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Extract token from Authorization header  
     let auth_header = match req.headers().get("Authorization") {
         Ok(Some(header)) => header,
-        _ => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "UNAUTHORIZED", 
-                "message": "Authorization header missing"
-            }
-        })).map(|r| r.with_status(401))
+        _ => {
+            let empty_response: Option<crate::entities::User> = None;
+            let api_response = ApiResponse::error(401, "UNAUTHORIZED", "Authorization header missing", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(401));
+        }
     };
     
     let token = auth_header
@@ -180,21 +183,17 @@ pub async fn me(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Verify token and get user
     match auth_use_case.verify_token(token).await {
         Ok(user) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": user
-            }))
+            let api_response = ApiResponse::success(user);
+            Response::from_json(&api_response)
         },
         Err(e) => {
             console_log!("Token verification error: {:?}", e);
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": "UNAUTHORIZED",
-                    "message": "Invalid or expired token",
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(401))
+            let empty_response: Option<crate::entities::User> = None;
+            let mut api_response = ApiResponse::error(401, "UNAUTHORIZED", "Invalid or expired token", empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(401))
         }
     }
 }

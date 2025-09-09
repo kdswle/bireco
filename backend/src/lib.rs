@@ -1,11 +1,11 @@
 use worker::*;
 
-mod handlers;
-mod entities;
+pub mod handlers;
+pub mod entities;
 mod external;
 mod repositories;
 mod use_cases;
-mod dtos;
+pub mod dtos;
 pub mod api_docs;
 
 fn add_cors_headers(mut response: Response, env: &Env) -> Result<Response> {

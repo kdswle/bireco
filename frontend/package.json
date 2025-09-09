@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "generate-types": "openapi-typescript ../backend/openapi.json -o src/generated-api/schema.ts",
-    "generate-types-remote": "openapi-typescript http://localhost:8787/api/docs/openapi.json -o src/generated-api/schema.ts"
+    "generate-types-remote": "openapi-typescript https://api.bireco.noisaria.com/api/docs/openapi.json -o src/generated-api/schema.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

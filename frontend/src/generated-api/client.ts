@@ -66,8 +66,12 @@ export class ApiClient {
         throw new Error(`Book search failed: ${response.statusText}`);
       }
       const result = await response.json();
-      // Handle API response format {success: true, data: BookSearchResult[]}
-      return result.data || [];
+      // Handle API response format {data: BookSearchResult[], meta: {status: 200}}
+      if (result.meta?.status === 200) {
+        return result.data || [];
+      } else {
+        throw new Error(result.meta?.error?.message || 'API Error');
+      }
     },
 
     getById: async (id: string, token?: string): Promise<Book> => {
@@ -83,8 +87,12 @@ export class ApiClient {
         throw new Error(`Get book failed: ${response.statusText}`);
       }
       const result = await response.json();
-      // Handle API response format {success: true, data: Book}
-      return result.data || result;
+      // Handle API response format {data: Book, meta: {status: 200}}
+      if (result.meta?.status === 200) {
+        return result.data;
+      } else {
+        throw new Error(result.meta?.error?.message || 'API Error');
+      }
     },
 
     create: async (data: CreateBookRequest, token: string): Promise<Book> => {
@@ -100,8 +108,12 @@ export class ApiClient {
         throw new Error(`Create book failed: ${response.statusText}`);
       }
       const result = await response.json();
-      // Handle API response format {success: true, data: Book}
-      return result.data || result;
+      // Handle API response format {data: Book, meta: {status: 200}}
+      if (result.meta?.status === 200) {
+        return result.data;
+      } else {
+        throw new Error(result.meta?.error?.message || 'API Error');
+      }
     },
   };
 

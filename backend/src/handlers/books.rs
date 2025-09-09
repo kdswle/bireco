@@ -12,6 +12,19 @@ fn normalize_search_query(query: &str) -> String {
     query.replace('　', " ").trim().to_string()
 }
 
+/// Search books by title
+#[utoipa::path(
+    get,
+    path = "/api/books/search",
+    tag = "books",
+    params(
+        ("q" = String, Query, description = "Search query"),
+        ("limit" = Option<u32>, Query, description = "Number of results to return")
+    ),
+    responses(
+        (status = 200, description = "Search results", body = crate::api_docs::BookSearchResultsWrapper)
+    )
+)]
 pub async fn search(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
     let url = req.url()?;
     let query_pairs: std::collections::HashMap<String, String> = 
@@ -48,6 +61,17 @@ pub async fn search(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
     }
 }
 
+/// Create a new book
+#[utoipa::path(
+    post,
+    path = "/api/books",
+    tag = "books",
+    request_body = CreateBookRequest,
+    responses(
+        (status = 201, description = "Book created successfully", body = ApiResponse<crate::entities::BookResponse>),
+        (status = 400, description = "Invalid request", body = ApiResponse<Option<crate::entities::BookResponse>>)
+    )
+)]
 pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Get D1 database
     let db = ctx.env.d1("DB")?;
@@ -97,6 +121,19 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
     }
 }
 
+/// Get book by ID
+#[utoipa::path(
+    get,
+    path = "/api/books/{id}",
+    tag = "books",
+    params(
+        ("id" = String, Path, description = "Book ID")
+    ),
+    responses(
+        (status = 200, description = "Book found", body = ApiResponse<crate::entities::BookResponse>),
+        (status = 404, description = "Book not found", body = ApiResponse<Option<crate::entities::BookResponse>>)
+    )
+)]
 pub async fn get_by_id(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Get D1 database
     let db = ctx.env.d1("DB")?;

@@ -25,14 +25,14 @@ pub struct CreateReviewRequest {
     pub rating: Option<i32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateReviewRequest {
     pub title: Option<String>,
     pub content: Option<String>,
     pub rating: Option<i32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ReviewResponse {
     pub id: String,
     pub book_id: String,

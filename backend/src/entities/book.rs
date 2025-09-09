@@ -37,7 +37,7 @@ impl SourceType {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateBookRequest {
     pub title: String,
     pub authors: Option<String>,
@@ -50,7 +50,7 @@ pub struct CreateBookRequest {
     pub source_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BookResponse {
     pub id: String,
     pub title: String,
@@ -67,7 +67,7 @@ pub struct BookResponse {
     pub average_rating: Option<f64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BookSearchResult {
     pub source_id: String,
     pub title: String,

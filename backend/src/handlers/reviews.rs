@@ -25,6 +25,20 @@ async fn get_user_id_from_request(req: &Request, ctx: &RouteContext<()>) -> Resu
     Ok(user.id)
 }
 
+/// List reviews
+#[utoipa::path(
+    get,
+    path = "/api/reviews",
+    tag = "reviews",
+    params(
+        ("book_id" = Option<String>, Query, description = "Filter by book ID"),
+        ("limit" = Option<u32>, Query, description = "Number of results to return"),
+        ("offset" = Option<u32>, Query, description = "Offset for pagination")
+    ),
+    responses(
+        (status = 200, description = "Review list", body = ApiResponse<Vec<crate::entities::ReviewResponse>>)
+    )
+)]
 pub async fn list(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let db = ctx.env.d1("DB")?;
     
@@ -61,6 +75,18 @@ pub async fn list(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     }
 }
 
+/// Get latest reviews
+#[utoipa::path(
+    get,
+    path = "/api/reviews/latest",
+    tag = "reviews",
+    params(
+        ("limit" = Option<u32>, Query, description = "Number of results to return")
+    ),
+    responses(
+        (status = 200, description = "Latest reviews", body = ApiResponse<Vec<crate::entities::ReviewResponse>>)
+    )
+)]
 pub async fn latest(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let db = ctx.env.d1("DB")?;
     
@@ -78,37 +104,44 @@ pub async fn latest(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     
     match review_use_case.get_latest_reviews(limit).await {
         Ok(reviews) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": reviews
-            }))
+            let api_response = ApiResponse::success(reviews);
+            Response::from_json(&api_response)
         },
         Err(e) => {
             console_log!("Latest reviews error: {:?}", e);
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": "LATEST_REVIEWS_FAILED",
-                    "message": "最新レビューの取得に失敗しました",
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(500))
+            let empty_response: Vec<crate::entities::ReviewResponse> = vec![];
+            let mut api_response = ApiResponse::error(500, "LATEST_REVIEWS_FAILED", "最新レビューの取得に失敗しました", empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(500))
         }
     }
 }
 
+/// Get review by ID
+#[utoipa::path(
+    get,
+    path = "/api/reviews/{id}",
+    tag = "reviews",
+    params(
+        ("id" = String, Path, description = "Review ID")
+    ),
+    responses(
+        (status = 200, description = "Review found", body = ApiResponse<crate::entities::ReviewResponse>),
+        (status = 404, description = "Review not found", body = ApiResponse<Option<crate::entities::ReviewResponse>>)
+    )
+)]
 pub async fn get_by_id(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let db = ctx.env.d1("DB")?;
     
     let review_id = match ctx.param("id") {
         Some(id) => id,
-        None => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Review ID is required"
-            }
-        })).map(|r| r.with_status(400))
+        None => {
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Review ID is required", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
 
     let review_repo = ReviewRepository::new(&db);
@@ -118,59 +151,60 @@ pub async fn get_by_id(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     
     match review_use_case.get_review_by_id(review_id).await {
         Ok(Some(review)) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": review
-            }))
+            let api_response = ApiResponse::success(review);
+            Response::from_json(&api_response)
         },
         Ok(None) => {
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": "レビューが見つかりません"
-                }
-            })).map(|r| r.with_status(404))
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let api_response = ApiResponse::error(404, "NOT_FOUND", "レビューが見つかりません", empty_response);
+            Response::from_json(&api_response).map(|r| r.with_status(404))
         },
         Err(e) => {
             console_log!("Review retrieval error: {:?}", e);
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": "REVIEW_RETRIEVAL_FAILED",
-                    "message": "レビューの取得に失敗しました",
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(500))
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let mut api_response = ApiResponse::error(500, "REVIEW_RETRIEVAL_FAILED", "レビューの取得に失敗しました", empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(500))
         }
     }
 }
 
+/// Create a new review
+#[utoipa::path(
+    post,
+    path = "/api/reviews",
+    tag = "reviews",
+    request_body = CreateReviewRequest,
+    responses(
+        (status = 201, description = "Review created successfully", body = ApiResponse<crate::entities::ReviewResponse>),
+        (status = 400, description = "Invalid request", body = ApiResponse<Option<crate::entities::ReviewResponse>>),
+        (status = 401, description = "Unauthorized", body = ApiResponse<Option<crate::entities::ReviewResponse>>),
+        (status = 404, description = "Book not found", body = ApiResponse<Option<crate::entities::ReviewResponse>>)
+    )
+)]
 pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let db = ctx.env.d1("DB")?;
     
     // Get user ID from token
     let user_id = match get_user_id_from_request(&req, &ctx).await {
         Ok(id) => id,
-        Err(_) => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "認証が必要です"
-            }
-        })).map(|r| r.with_status(401))
+        Err(_) => {
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let api_response = ApiResponse::error(401, "UNAUTHORIZED", "認証が必要です", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(401));
+        }
     };
     
     // Parse request body
     let body: CreateReviewRequest = match req.json().await {
         Ok(body) => body,
-        Err(_) => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Invalid request body"
-            }
-        })).map(|r| r.with_status(400))
+        Err(_) => {
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Invalid request body", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
 
     let review_repo = ReviewRepository::new(&db);
@@ -180,10 +214,8 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
     
     match review_use_case.create_review(body, &user_id).await {
         Ok(review) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": review
-            })).map(|r| r.with_status(201))
+            let api_response = ApiResponse::success_with_status(review, 201);
+            Response::from_json(&api_response).map(|r| r.with_status(201))
         },
         Err(e) => {
             console_log!("Review creation error: {:?}", e);
@@ -199,54 +231,63 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
                 }
             };
             
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": code,
-                    "message": message,
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(status))
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let mut api_response = ApiResponse::error(status, code, message, empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(status))
         }
     }
 }
 
+/// Update an existing review
+#[utoipa::path(
+    put,
+    path = "/api/reviews/{id}",
+    tag = "reviews",
+    params(
+        ("id" = String, Path, description = "Review ID")
+    ),
+    request_body = UpdateReviewRequest,
+    responses(
+        (status = 200, description = "Review updated successfully", body = ApiResponse<crate::entities::ReviewResponse>),
+        (status = 400, description = "Invalid request", body = ApiResponse<Option<crate::entities::ReviewResponse>>),
+        (status = 401, description = "Unauthorized", body = ApiResponse<Option<crate::entities::ReviewResponse>>),
+        (status = 403, description = "Forbidden", body = ApiResponse<Option<crate::entities::ReviewResponse>>),
+        (status = 404, description = "Review not found", body = ApiResponse<Option<crate::entities::ReviewResponse>>)
+    )
+)]
 pub async fn update(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let db = ctx.env.d1("DB")?;
     
     // Get user ID from token
     let user_id = match get_user_id_from_request(&req, &ctx).await {
         Ok(id) => id,
-        Err(_) => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "認証が必要です"
-            }
-        })).map(|r| r.with_status(401))
+        Err(_) => {
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let api_response = ApiResponse::error(401, "UNAUTHORIZED", "認証が必要です", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(401));
+        }
     };
     
     let review_id = match ctx.param("id") {
         Some(id) => id,
-        None => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Review ID is required"
-            }
-        })).map(|r| r.with_status(400))
+        None => {
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Review ID is required", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
     
     // Parse request body
     let body: UpdateReviewRequest = match req.json().await {
         Ok(body) => body,
-        Err(_) => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Invalid request body"
-            }
-        })).map(|r| r.with_status(400))
+        Err(_) => {
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Invalid request body", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
 
     let review_repo = ReviewRepository::new(&db);
@@ -256,10 +297,8 @@ pub async fn update(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
     
     match review_use_case.update_review(review_id, body, &user_id).await {
         Ok(review) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": review
-            }))
+            let api_response = ApiResponse::success(review);
+            Response::from_json(&api_response)
         },
         Err(e) => {
             console_log!("Review update error: {:?}", e);
@@ -278,42 +317,51 @@ pub async fn update(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
                 }
             };
             
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": code,
-                    "message": message,
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(status))
+            let empty_response: Option<crate::entities::ReviewResponse> = None;
+            let mut api_response = ApiResponse::error(status, code, message, empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(status))
         }
     }
 }
 
+/// Delete a review
+#[utoipa::path(
+    delete,
+    path = "/api/reviews/{id}",
+    tag = "reviews",
+    params(
+        ("id" = String, Path, description = "Review ID")
+    ),
+    responses(
+        (status = 200, description = "Review deleted successfully", body = ApiResponse<String>),
+        (status = 401, description = "Unauthorized", body = ApiResponse<Option<String>>),
+        (status = 403, description = "Forbidden", body = ApiResponse<Option<String>>),
+        (status = 404, description = "Review not found", body = ApiResponse<Option<String>>)
+    )
+)]
 pub async fn delete(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let db = ctx.env.d1("DB")?;
     
     // Get user ID from token
     let user_id = match get_user_id_from_request(&req, &ctx).await {
         Ok(id) => id,
-        Err(_) => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "UNAUTHORIZED",
-                "message": "認証が必要です"
-            }
-        })).map(|r| r.with_status(401))
+        Err(_) => {
+            let empty_response: Option<String> = None;
+            let api_response = ApiResponse::error(401, "UNAUTHORIZED", "認証が必要です", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(401));
+        }
     };
     
     let review_id = match ctx.param("id") {
         Some(id) => id,
-        None => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Review ID is required"
-            }
-        })).map(|r| r.with_status(400))
+        None => {
+            let empty_response: Option<String> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Review ID is required", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
 
     let review_repo = ReviewRepository::new(&db);
@@ -323,10 +371,9 @@ pub async fn delete(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     
     match review_use_case.delete_review(review_id, &user_id).await {
         Ok(_) => {
-            Response::from_json(&json!({
-                "success": true,
-                "message": "レビューを削除しました"
-            }))
+            let message = "レビューを削除しました".to_string();
+            let api_response = ApiResponse::success(message);
+            Response::from_json(&api_response)
         },
         Err(e) => {
             console_log!("Review deletion error: {:?}", e);
@@ -342,14 +389,12 @@ pub async fn delete(req: Request, ctx: RouteContext<()>) -> Result<Response> {
                 }
             };
             
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": code,
-                    "message": message,
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(status))
+            let empty_response: Option<String> = None;
+            let mut api_response = ApiResponse::error(status, code, message, empty_response);
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(status))
         }
     }
 }
