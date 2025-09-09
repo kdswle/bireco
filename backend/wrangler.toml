@@ -29,3 +29,10 @@ command = "cargo install -q worker-build && worker-build --release"
 [[routes]]
 pattern = "api.bireco.noisaria.com"
 custom_domain = true
+
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
