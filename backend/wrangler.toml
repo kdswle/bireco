@@ -37,11 +37,11 @@ database_id = "2bdfb5a0-3117-4547-8455-5b99e8312492"
 migrations_dir = "migrations"
 
 [build]
-command = "cargo install -q worker-build && worker-build --release"
+command = "PATH=$PATH:~/.cargo/bin ~/.cargo/bin/cargo install -q worker-build && PATH=$PATH:~/.cargo/bin ~/.cargo/bin/worker-build --release"
 
-[[routes]]
-pattern = "api.bireco.noisaria.com"
-custom_domain = true
+routes = [
+  { pattern = "api.bireco.noisaria.com", custom_domain = true }
+]
 
 [observability]
 enabled = true

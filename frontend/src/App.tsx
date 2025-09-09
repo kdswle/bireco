@@ -10,6 +10,7 @@ import { BookDetailPage } from './pages/BookDetailPage'
 import { ReviewDetailPage } from './pages/ReviewDetailPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { CreateReviewPage } from './pages/CreateReviewPage'
+import { UserPage } from './pages/UserPage'
 import './App.css'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
           <Route path="/books/:id" element={<BookDetailPage />} />
           <Route path="/books/:id/review" element={<CreateReviewPage />} />
           <Route path="/reviews/:id" element={<ReviewDetailPage />} />
+          <Route path="/users/:id" element={<UserPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </main>

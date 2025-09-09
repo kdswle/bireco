@@ -1,10 +1,25 @@
 use worker::*;
 use serde_json::json;
+use utoipa::path;
 
 use crate::entities::{CreateUserRequest, LoginRequest};
 use crate::repositories::UserRepository;
 use crate::use_cases::AuthUseCase;
+use crate::dtos::{RegisterRequestDto, AuthResponseDto};
+use crate::dtos::common::ApiResponse;
 
+/// Register a new user
+#[utoipa::path(
+    post,
+    path = "/api/auth/register",
+    tag = "auth",
+    request_body = RegisterRequestDto,
+    responses(
+        (status = 201, description = "User registered successfully", body = ApiResponse<AuthResponseDto>),
+        (status = 400, description = "Invalid request", body = ApiResponse<String>),
+        (status = 409, description = "User already exists", body = ApiResponse<String>)
+    )
+)]
 pub async fn register(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Get environment variables
     let jwt_secret = ctx.env.var("JWT_SECRET")?.to_string();
@@ -15,13 +30,11 @@ pub async fn register(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     // Parse request body
     let body: CreateUserRequest = match req.json().await {
         Ok(body) => body,
-        Err(_) => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Invalid request body"
-            }
-        })).map(|r| r.with_status(400))
+        Err(_) => {
+            let empty_response: Option<crate::entities::AuthResponse> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Invalid request body", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
 
     // Initialize repository and use case
@@ -65,6 +78,18 @@ pub async fn register(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     }
 }
 
+/// Authenticate a user and return a JWT token
+#[utoipa::path(
+    post,
+    path = "/api/auth/login",
+    tag = "auth",
+    request_body = LoginRequestDto,
+    responses(
+        (status = 200, description = "User authenticated successfully", body = ApiResponse<AuthResponseDto>),
+        (status = 400, description = "Invalid request", body = ApiResponse<String>),
+        (status = 401, description = "Invalid credentials", body = ApiResponse<String>)
+    )
+)]
 pub async fn login(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Get environment variables
     let jwt_secret = ctx.env.var("JWT_SECRET")?.to_string();

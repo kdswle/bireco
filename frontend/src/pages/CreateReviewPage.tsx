@@ -13,8 +13,8 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { booksApi, reviewsApi } from '../lib/api';
-import type { Book } from '../types';
+import { booksApi, reviewsApi } from '../lib/api-client';
+import type { Book } from '../generated-api/client';
 
 const MarkdownEditor = styled('textarea')(({ theme }) => ({
   width: '100%',
@@ -164,12 +164,14 @@ const CreateReviewPage: React.FC = () => {
     setError(null);
 
     try {
-      await reviewsApi.create({
+      const reviewData = await reviewsApi.create({
         book_id: bookId!,
         title: title.trim(),
         content: content.trim(),
         rating: rating ?? undefined,
       });
+      
+      console.log('Review created successfully:', reviewData);
 
       // Delete draft after successful review creation (temporarily disabled)
       // if (draftId) {
@@ -180,7 +182,8 @@ const CreateReviewPage: React.FC = () => {
       //   }
       // }
 
-      navigate(`/books/${bookId}`);
+      // Force refresh by navigating with replace and state
+      navigate(`/books/${bookId}`, { replace: true, state: { refreshReviews: true } });
     } catch (error: any) {
       setError(error.message || 'Failed to create review');
     } finally {

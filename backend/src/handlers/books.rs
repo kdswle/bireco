@@ -5,6 +5,7 @@ use crate::external::ndl::opensearch::SearchParams;
 use crate::entities::CreateBookRequest;
 use crate::repositories::BookRepository;
 use crate::use_cases::BookUseCase;
+use crate::dtos::common::ApiResponse;
 
 fn normalize_search_query(query: &str) -> String {
     // 全角空白を半角空白に変換してtrim
@@ -25,10 +26,9 @@ pub async fn search(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
 
     // Return empty result for empty query
     if query.is_empty() {
-        return Response::from_json(&json!({
-            "success": true,
-            "data": []
-        }));
+        let empty_response: Vec<crate::entities::BookSearchResult> = vec![];
+        let api_response = ApiResponse::success(empty_response);
+        return Response::from_json(&api_response);
     }
 
     let client = NdlOpenSearchClient::new();
@@ -36,17 +36,13 @@ pub async fn search(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
     // NDL OpenSearch APIで検索
     match client.search_by_title(&query, Some(limit)).await {
         Ok(books) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": books
-            }))
+            let api_response = ApiResponse::success(books);
+            Response::from_json(&api_response)
         },
         Err(e) => {
-            let response = Response::from_json(&json!({
-                "success": false,
-                "error": "Book search failed",
-                "message": format!("Failed to search books: {}", e)
-            }))?;
+            let empty_response: Vec<crate::entities::BookSearchResult> = vec![];
+            let api_response = ApiResponse::error(500, "BOOK_SEARCH_FAILED", &format!("Failed to search books: {}", e), empty_response);
+            let response = Response::from_json(&api_response)?;
             Ok(response.with_status(500))
         }
     }
@@ -59,13 +55,11 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
     // Parse request body
     let body: CreateBookRequest = match req.json().await {
         Ok(body) => body,
-        Err(_) => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Invalid request body"
-            }
-        })).map(|r| r.with_status(400))
+        Err(_) => {
+            let empty_response: Option<crate::entities::BookResponse> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Invalid request body", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
 
     // Initialize repository and use case
@@ -75,10 +69,8 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
     // Create book
     match book_use_case.create_book(body).await {
         Ok(book_response) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": book_response
-            })).map(|r| r.with_status(201))
+            let api_response = ApiResponse::success_with_status(book_response, 201);
+            Response::from_json(&api_response).map(|r| r.with_status(201))
         },
         Err(e) => {
             console_log!("Book creation error: {:?}", e);
@@ -94,14 +86,13 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
                 }
             };
             
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": code,
-                    "message": message,
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(status))
+            let empty_response: Option<crate::entities::BookResponse> = None;
+            let mut api_response = ApiResponse::error(status, code, message, empty_response);
+            // Add error details
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(status))
         }
     }
 }
@@ -113,13 +104,11 @@ pub async fn get_by_id(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     // Extract book ID from route parameters
     let book_id = match ctx.param("id") {
         Some(id) => id,
-        None => return Response::from_json(&json!({
-            "success": false,
-            "error": {
-                "code": "INVALID_REQUEST",
-                "message": "Book ID is required"
-            }
-        })).map(|r| r.with_status(400))
+        None => {
+            let empty_response: Option<crate::entities::BookResponse> = None;
+            let api_response = ApiResponse::error(400, "INVALID_REQUEST", "Book ID is required", empty_response);
+            return Response::from_json(&api_response).map(|r| r.with_status(400));
+        }
     };
 
     // Initialize repository and use case
@@ -129,30 +118,23 @@ pub async fn get_by_id(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     // Get book
     match book_use_case.get_book_by_id(book_id).await {
         Ok(Some(book_response)) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": book_response
-            }))
+            let api_response = ApiResponse::success(book_response);
+            Response::from_json(&api_response)
         },
         Ok(None) => {
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": "本が見つかりません"
-                }
-            })).map(|r| r.with_status(404))
+            let empty_response: Option<crate::entities::BookResponse> = None;
+            let api_response = ApiResponse::error(404, "NOT_FOUND", "本が見つかりません", empty_response);
+            Response::from_json(&api_response).map(|r| r.with_status(404))
         },
         Err(e) => {
             console_log!("Book retrieval error: {:?}", e);
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": "BOOK_RETRIEVAL_FAILED",
-                    "message": "本の取得に失敗しました",
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(500))
+            let empty_response: Option<crate::entities::BookResponse> = None;
+            let mut api_response = ApiResponse::error(500, "BOOK_RETRIEVAL_FAILED", "本の取得に失敗しました", empty_response);
+            // Add error details
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(500))
         }
     }
 }

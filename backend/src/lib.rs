@@ -5,6 +5,8 @@ mod entities;
 mod external;
 mod repositories;
 mod use_cases;
+mod dtos;
+pub mod api_docs;
 
 fn add_cors_headers(mut response: Response, env: &Env) -> Result<Response> {
     let headers = response.headers_mut();
@@ -34,6 +36,17 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .get("/", |_, _| Response::ok("bireco API is running"))
         .get("/health", handlers::health::check)
         .get("/api/test", handlers::health::test)
+        .get("/api/docs/openapi.json", |_, _| {
+            use crate::api_docs::ApiDoc;
+            use utoipa::OpenApi;
+            
+            let openapi_spec = ApiDoc::openapi().to_pretty_json().unwrap_or_else(|_| "{}".to_string());
+            Response::from_json(&serde_json::from_str::<serde_json::Value>(&openapi_spec).unwrap_or_default())
+        })
+        .get("/api/docs", |_, _| {
+            let html = include_str!("../swagger-ui.html");
+            Response::from_html(html)
+        })
         .post_async("/api/auth/register", handlers::auth::register)
         .post_async("/api/auth/login", handlers::auth::login)
         .get_async("/api/auth/me", handlers::auth::me)

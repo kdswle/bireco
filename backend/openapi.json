@@ -1,0 +1,36 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Bireco API",
+    "description": "API for the Bireco book review platform",
+    "contact": {
+      "name": "Bireco Team",
+      "email": "team@bireco.example.com"
+    },
+    "license": {
+      "name": ""
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8787",
+      "description": "Development server"
+    }
+  ],
+  "paths": {},
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Authentication endpoints"
+    },
+    {
+      "name": "books",
+      "description": "Book management endpoints"
+    },
+    {
+      "name": "reviews",
+      "description": "Review management endpoints"
+    }
+  ]
+}

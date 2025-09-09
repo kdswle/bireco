@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { MenuBook as BookIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import type { LoginRequest } from '../types';
+import type { LoginRequest } from '../generated-api/client';
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();

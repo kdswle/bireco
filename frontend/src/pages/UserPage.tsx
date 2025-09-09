@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -17,14 +17,13 @@ import {
 } from '@mui/material';
 import { 
   Person, 
-  Edit, 
+  ArrowBack,
   RateReview as ReviewIcon,
   MenuBook as BookIcon,
 } from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
 import { reviewsApi } from '../lib/api-client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { Review } from '../generated-api/client';
+import type { Review, User } from '../generated-api/client';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -40,75 +39,98 @@ function TabPanel({ children, value, index }: TabPanelProps) {
   );
 }
 
-export function ProfilePage() {
-  const { user, isAuthenticated } = useAuth();
+export function UserPage() {
+  const { id: userId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
+  const [user, setUser] = useState<User | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
+    if (!userId) {
+      navigate('/');
       return;
     }
 
-    const loadUserReviews = async () => {
+    const loadUserData = async () => {
       try {
-        console.log('ProfilePage: Loading user reviews...');
-        console.log('ProfilePage: Current user:', user);
+        // Get all reviews and filter by user ID
+        const reviewsData = await reviewsApi.list(undefined, 100, 0);
         
-        // Use new generated API client
-        const reviewsData = await reviewsApi.list(undefined, 50, 0);
-        console.log('ProfilePage: Raw reviews data received:', reviewsData);
-        
-        // Handle different response formats
+        // Handle different response formats from new client
         let reviews: Review[] = [];
         if (Array.isArray(reviewsData)) {
-          // Direct array response
           reviews = reviewsData;
         } else if (reviewsData && 'data' in reviewsData && Array.isArray(reviewsData.data)) {
-          // Paginated response format
           reviews = reviewsData.data;
         }
         
-        console.log('ProfilePage: Reviews to filter:', reviews);
+        const userReviews = reviews.filter(review => review.user.id === userId);
         
-        // Filter reviews by current user
-        const userReviews = reviews.filter((review: Review) => {
-          console.log('ProfilePage: Comparing review user ID:', review.user.id, 'with current user ID:', user?.id);
-          return review.user.id === user?.id;
-        });
-        
-        console.log('ProfilePage: Filtered user reviews:', userReviews);
-        setReviews(userReviews);
+        if (userReviews.length > 0) {
+          setUser(userReviews[0].user);
+          setReviews(userReviews);
+        } else {
+          setError('ユーザーが見つかりません');
+        }
       } catch (err) {
-        console.error('ProfilePage: Error loading reviews:', err);
-        setError(err instanceof Error ? err.message : 'レビューの取得に失敗しました');
+        setError(err instanceof Error ? err.message : 'ユーザー情報の取得に失敗しました');
       } finally {
         setLoading(false);
       }
     };
 
-    loadUserReviews();
-  }, [isAuthenticated, navigate, user?.id]);
+    loadUserData();
+  }, [userId, navigate]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
   if (loading) return <LoadingSpinner />;
 
-  console.log('ProfilePage: Rendering with reviews:', reviews);
-  console.log('ProfilePage: Reviews length:', reviews.length);
+  if (error) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Button 
+          startIcon={<ArrowBack />} 
+          onClick={() => navigate(-1)}
+          sx={{ mb: 3 }}
+        >
+          戻る
+        </Button>
+        <Alert severity="error">{error}</Alert>
+      </Container>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Button 
+          startIcon={<ArrowBack />} 
+          onClick={() => navigate(-1)}
+          sx={{ mb: 3 }}
+        >
+          戻る
+        </Button>
+        <Alert severity="error">ユーザーが見つかりません</Alert>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Button 
+        startIcon={<ArrowBack />} 
+        onClick={() => navigate(-1)}
+        sx={{ mb: 3 }}
+      >
+        戻る
+      </Button>
+
       {/* User Profile Header */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
@@ -126,20 +148,10 @@ export function ProfilePage() {
               <Typography variant="h4" gutterBottom>
                 {user.username}
               </Typography>
-              <Typography variant="body1" color="text.secondary" gutterBottom>
-                {user.email}
-              </Typography>
               <Typography variant="body2" color="text.secondary">
                 参加日: {new Date(user.created_at).toLocaleDateString('ja-JP')}
               </Typography>
             </Box>
-            <Button 
-              variant="outlined" 
-              startIcon={<Edit />}
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              編集
-            </Button>
           </Box>
 
           {/* Stats */}
@@ -156,7 +168,7 @@ export function ProfilePage() {
               <Typography variant="h6" color="primary">
                 {reviews.length > 0 
                   ? (reviews.reduce((acc, review) => acc + (review.rating || 0), 0) / reviews.length).toFixed(1)
-                  : '0.0'}
+                  : '0'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 平均評価
@@ -176,24 +188,15 @@ export function ProfilePage() {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          {error ? (
-            <Alert severity="error">{error}</Alert>
-          ) : reviews.length === 0 ? (
+          {reviews.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <ReviewIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
               <Typography variant="h6" gutterBottom>
                 まだレビューがありません
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                気になる本を見つけてレビューを書いてみましょう
+                このユーザーはまだレビューを投稿していません
               </Typography>
-              <Button 
-                variant="contained" 
-                sx={{ mt: 2 }}
-                onClick={() => navigate('/search')}
-              >
-                本を探す
-              </Button>
             </Box>
           ) : (
             <Grid container spacing={3}>

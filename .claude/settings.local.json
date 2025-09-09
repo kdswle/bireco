@@ -28,7 +28,13 @@
       "WebFetch(domain:docs.rs)",
       "Bash(npm run dev:*)",
       "Bash(/Users/shono/.cargo/bin/worker-build:*)",
-      "Bash(export:*)"
+      "Bash(export:*)",
+      "Bash(~/.cargo/bin/cargo run --bin generate_openapi)",
+      "Bash(npm run generate-client-local:*)",
+      "Bash(npm run generate-types:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)",
+      "Bash(~/.cargo/bin/cargo build --target wasm32-unknown-unknown)"
     ],
     "deny": []
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -19,15 +19,16 @@ import {
   CalendarMonth as YearIcon,
   Business as PublisherIcon,
 } from '@mui/icons-material';
-import { booksApi, reviewsApi } from '../lib/api';
+import { booksApi, reviewsApi } from '../lib/api-client';
 import { useAuth } from '../contexts/AuthContext';
-import type { Book, Review } from '../types';
+import type { Book, Review } from '../generated-api/client';
 
 export function BookDetailPage() {
   console.log('BookDetailPage: Component rendered');
   
   const { id: bookId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
   
   console.log('BookDetailPage: bookId from useParams:', bookId);
@@ -37,6 +38,7 @@ export function BookDetailPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     console.log('BookDetailPage: useEffect triggered with bookId:', bookId);
@@ -53,15 +55,23 @@ export function BookDetailPage() {
         setLoading(true);
         
         console.log('BookDetailPage: Calling booksApi.getById...');
-        const bookData = await booksApi.getById(bookId);
-        console.log('BookDetailPage: Book data received:', bookData);
+        const book = await booksApi.getById(bookId);
+        console.log('BookDetailPage: Book data received:', book);
         
         console.log('BookDetailPage: Calling reviewsApi.list...');
         const reviewsData = await reviewsApi.list(bookId, 20, 0);
         console.log('BookDetailPage: Reviews data received:', reviewsData);
         
-        setBook(bookData);
-        setReviews(reviewsData.data || []);
+        setBook(book);
+        
+        // Handle different response formats from new client
+        let reviews: Review[] = [];
+        if (Array.isArray(reviewsData)) {
+          reviews = reviewsData;
+        } else if (reviewsData && 'data' in reviewsData && Array.isArray(reviewsData.data)) {
+          reviews = reviewsData.data;
+        }
+        setReviews(reviews);
       } catch (error: any) {
         console.error('BookDetailPage: Error loading data:', error);
         setError(error.message || 'Failed to load book details');
@@ -71,7 +81,30 @@ export function BookDetailPage() {
     };
 
     loadData();
-  }, [bookId]);
+  }, [bookId, refreshTrigger]);
+
+  // Refresh data when returning from review creation
+  useEffect(() => {
+    if (location.state?.refreshReviews) {
+      setRefreshTrigger(prev => prev + 1);
+      // Clear the state to prevent repeated refreshes
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // Refresh data when page becomes visible (e.g., when returning from review creation)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const handleCreateReview = () => {
     if (!isAuthenticated) {
@@ -189,7 +222,19 @@ export function BookDetailPage() {
       ) : (
         <Box>
           {reviews.map((review, index) => (
-            <Card key={review.id} sx={{ mb: 2 }}>
+            <Card 
+              key={review.id} 
+              sx={{ 
+                mb: 2,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  elevation: 4,
+                  transform: 'translateY(-1px)',
+                },
+              }}
+              onClick={() => navigate(`/reviews/${review.id}`)}
+            >
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                   <Box>
@@ -205,9 +250,30 @@ export function BookDetailPage() {
                   )}
                 </Box>
                 
-                <Typography variant="body1">
-                  <div dangerouslySetInnerHTML={{ __html: review.content }} />
+                <Typography 
+                  variant="body1"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {review.content}
                 </Typography>
+
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button 
+                    size="small" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/reviews/${review.id}`);
+                    }}
+                  >
+                    詳細を見る
+                  </Button>
+                </Box>
               </CardContent>
               {index < reviews.length - 1 && <Divider />}
             </Card>

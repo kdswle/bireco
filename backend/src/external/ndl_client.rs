@@ -43,24 +43,23 @@ impl NdlClient {
             encoded_query, limit
         );
 
-        let response = reqwest::Client::new()
-            .get(&url)
-            .header("User-Agent", "bireco/1.0")
-            .send()
-            .await
-            .map_err(|e| Error::RustError(format!("NDL API リクエストに失敗しました: {}", e)))?;
-
-        if !response.status().is_success() {
+        let mut headers = worker::Headers::new();
+        headers.set("User-Agent", "bireco/1.0")?;
+        
+        let request = worker::Request::new_with_init(&url, worker::RequestInit::new()
+            .with_method(worker::Method::Get)
+            .with_headers(headers))?;
+            
+        let mut response = worker::Fetch::Request(request).send().await?;
+        
+        if response.status_code() < 200 || response.status_code() >= 300 {
             return Err(Error::RustError(format!(
                 "NDL API エラー: {}", 
-                response.status()
+                response.status_code()
             )));
         }
 
-        let xml_text = response
-            .text()
-            .await
-            .map_err(|e| Error::RustError(format!("NDL API レスポンス取得に失敗しました: {}", e)))?;
+        let xml_text = response.text().await?;
 
         self.parse_xml_response(&xml_text)
     }
@@ -74,24 +73,23 @@ impl NdlClient {
             encoded_author, limit
         );
 
-        let response = reqwest::Client::new()
-            .get(&url)
-            .header("User-Agent", "bireco/1.0")
-            .send()
-            .await
-            .map_err(|e| Error::RustError(format!("NDL API リクエストに失敗しました: {}", e)))?;
-
-        if !response.status().is_success() {
+        let mut headers = worker::Headers::new();
+        headers.set("User-Agent", "bireco/1.0")?;
+        
+        let request = worker::Request::new_with_init(&url, worker::RequestInit::new()
+            .with_method(worker::Method::Get)
+            .with_headers(headers))?;
+            
+        let mut response = worker::Fetch::Request(request).send().await?;
+        
+        if response.status_code() < 200 || response.status_code() >= 300 {
             return Err(Error::RustError(format!(
                 "NDL API エラー: {}", 
-                response.status()
+                response.status_code()
             )));
         }
 
-        let xml_text = response
-            .text()
-            .await
-            .map_err(|e| Error::RustError(format!("NDL API レスポンス取得に失敗しました: {}", e)))?;
+        let xml_text = response.text().await?;
 
         self.parse_xml_response(&xml_text)
     }

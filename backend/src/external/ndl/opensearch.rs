@@ -163,24 +163,23 @@ impl NdlOpenSearchClient {
         let query_params = params.to_query_params();
         let url = self.build_url(query_params)?;
 
-        let response = reqwest::Client::new()
-            .get(&url)
-            .header("User-Agent", &self.user_agent)
-            .send()
-            .await
-            .map_err(|e| Error::RustError(format!("NDL API request failed: {}", e)))?;
-
-        if !response.status().is_success() {
+        let mut headers = worker::Headers::new();
+        headers.set("User-Agent", &self.user_agent)?;
+        
+        let request = worker::Request::new_with_init(&url, worker::RequestInit::new()
+            .with_method(worker::Method::Get)
+            .with_headers(headers))?;
+            
+        let mut response = worker::Fetch::Request(request).send().await?;
+        
+        if response.status_code() < 200 || response.status_code() >= 300 {
             return Err(Error::RustError(format!(
                 "NDL API error: {}", 
-                response.status()
+                response.status_code()
             )));
         }
 
-        let xml_text = response
-            .text()
-            .await
-            .map_err(|e| Error::RustError(format!("Failed to get NDL API response: {}", e)))?;
+        let xml_text = response.text().await?;
 
         self.parse_rss_response(&xml_text)
     }

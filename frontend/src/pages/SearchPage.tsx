@@ -21,9 +21,9 @@ import {
   MenuBook as BookIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
-import { booksApi } from '../lib/api';
+import { booksApi } from '../lib/api-client';
 import { useAuth } from '../contexts/AuthContext';
-import type { BookSearchResult } from '../types';
+import type { BookSearchResult } from '../generated-api/client';
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,12 +62,23 @@ export function SearchPage() {
 
   const handleViewBook = async (book: BookSearchResult) => {
     try {
-      // Create book in database first, then navigate to book details
-      const createdBook = await booksApi.create({
-        ...book,
+      // Create book from search result
+      const bookData = await booksApi.create({
+        title: book.title,
+        authors: book.authors,
+        isbn: book.isbn,
+        publication_year: book.publication_year,
+        publisher: book.publisher,
+        description: book.description,
+        cover_image_url: book.cover_image_url,
         source_type: 'ndl', // Assuming NDL for now
+        source_id: book.source_id,
       });
-      navigate(`/books/${createdBook.id}`);
+      
+      // API client now handles response format internally
+      const bookId = bookData.id;
+      
+      navigate(`/books/${bookId}`);
     } catch (error) {
       console.error('Failed to create book:', error);
       // Handle error - maybe show a toast notification
@@ -146,7 +157,7 @@ export function SearchPage() {
         </Typography>
         
         <Grid container spacing={3} sx={{ mt: 1 }}>
-          {searchResults.map((book, index) => (
+          {searchResults.map((book: BookSearchResult, index: number) => (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`${book.source_id}-${index}`}>
               <Card
                 elevation={2}
@@ -272,6 +283,7 @@ export function SearchPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="書籍名、著者名で検索..."
           variant="outlined"
+          autoComplete="off"
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -279,7 +291,21 @@ export function SearchPage() {
               </InputAdornment>
             ),
           }}
-          sx={{ mb: 2 }}
+          sx={{ 
+            mb: 2,
+            '& input:-webkit-autofill': {
+              WebkitBoxShadow: '0 0 0 1000px white inset',
+              WebkitTextFillColor: 'inherit',
+            },
+            '& input:-webkit-autofill:hover': {
+              WebkitBoxShadow: '0 0 0 1000px white inset',
+              WebkitTextFillColor: 'inherit',
+            },
+            '& input:-webkit-autofill:focus': {
+              WebkitBoxShadow: '0 0 0 1000px white inset',
+              WebkitTextFillColor: 'inherit',
+            },
+          }}
         />
         <Button
           type="submit"

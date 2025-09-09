@@ -1,13 +1,33 @@
-// API Response types
+// API Response types - New unified structure
 export interface ApiResponse<T> {
-  success: boolean;
   data: T;
-  error?: {
-    code: string;
-    message: string;
-  };
+  meta: ResponseMeta;
 }
 
+export interface ResponseMeta {
+  success: boolean;
+  timestamp: string;
+  request_id?: string;
+  pagination?: PaginationMeta;
+  error?: ApiError;
+}
+
+export interface ApiError {
+  code: string;
+  message: string;
+  details?: any;
+}
+
+export interface PaginationMeta {
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+// Legacy pagination format for backwards compatibility
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: {
@@ -15,7 +35,7 @@ export interface PaginatedResponse<T> {
     limit: number;
     offset: number;
   };
-  success: boolean;
+  success?: boolean;
 }
 
 // User types

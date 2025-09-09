@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { MenuBook as BookIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import type { RegisterRequest } from '../types';
+import type { RegisterRequest } from '../generated-api/client';
 
 export function RegisterPage() {
   const { register, isAuthenticated } = useAuth();

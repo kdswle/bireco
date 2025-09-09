@@ -42,15 +42,50 @@ async function fetchWithAuth(
   return response;
 }
 
-// Helper to handle API response
+// Helper to handle API response with new unified format
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(errorData.error?.message || errorData.message || 'API Error');
+    const errorData = await response.json().catch(() => ({ 
+      meta: { success: false, error: { message: 'Network error' } } 
+    }));
+    const errorMessage = errorData.meta?.error?.message || errorData.message || 'API Error';
+    throw new Error(errorMessage);
   }
   
-  const data = await response.json();
-  return data.success ? data.data : data;
+  const apiResponse = await response.json();
+  
+  // Handle new unified API response format
+  if (apiResponse.meta) {
+    if (!apiResponse.meta.success && apiResponse.meta.error) {
+      throw new Error(apiResponse.meta.error.message);
+    }
+    return apiResponse.data;
+  }
+  
+  // Fallback for old format during transition
+  return apiResponse.success ? apiResponse.data : apiResponse;
+}
+
+// Helper for paginated responses (currently unused but may be needed later)
+// @ts-ignore
+async function handlePaginatedResponse<T>(response: Response): Promise<{ data: T[], pagination: any }> {
+  const result = await handleResponse<any>(response);
+  
+  // If the response has pagination metadata in meta, transform it
+  const apiResponse = await response.json();
+  if (apiResponse.meta?.pagination) {
+    return {
+      data: result,
+      pagination: {
+        total: apiResponse.meta.pagination.total,
+        limit: apiResponse.meta.pagination.per_page,
+        offset: apiResponse.meta.pagination.page * apiResponse.meta.pagination.per_page,
+      }
+    };
+  }
+  
+  // Fallback for current format
+  return result.data ? result : { data: result, pagination: { total: result.length, limit: 50, offset: 0 } };
 }
 
 // Auth API
@@ -103,6 +138,15 @@ export const booksApi = {
     console.log('booksApi.getById: Processed result:', result);
     return result;
   },
+
+  findBySourceId: async (sourceId: string, sourceType: string): Promise<Book | null> => {
+    try {
+      const response = await fetchWithAuth(`/api/books/by-source?source_id=${encodeURIComponent(sourceId)}&source_type=${sourceType}`);
+      return handleResponse<Book>(response);
+    } catch (error) {
+      return null;
+    }
+  },
   
   create: async (data: BookSearchResult & { source_type: 'ndl' | 'amazon' | 'manual' }): Promise<Book> => {
     const response = await fetchWithAuth('/api/books', {
@@ -110,6 +154,17 @@ export const booksApi = {
       body: JSON.stringify(data),
     });
     return handleResponse<Book>(response);
+  },
+
+  createOrGet: async (data: BookSearchResult & { source_type: 'ndl' | 'amazon' | 'manual' }): Promise<Book> => {
+    // First try to find existing book by source_id
+    const existingBook = await booksApi.findBySourceId(data.source_id, data.source_type);
+    if (existingBook) {
+      return existingBook;
+    }
+    
+    // If not found, create new book
+    return booksApi.create(data);
   },
 };
 
@@ -124,6 +179,11 @@ export const reviewsApi = {
     const response = await fetchWithAuth(`/api/reviews?${params}`);
     return handleResponse<PaginatedResponse<Review>>(response);
   },
+
+  getById: async (id: string): Promise<Review> => {
+    const response = await fetchWithAuth(`/api/reviews/${id}`);
+    return handleResponse<Review>(response);
+  },
   
   latest: async (limit?: number): Promise<Review[]> => {
     const params = new URLSearchParams();
@@ -132,10 +192,25 @@ export const reviewsApi = {
     const response = await fetchWithAuth(`/api/reviews/latest?${params}`);
     return handleResponse<Review[]>(response);
   },
-  
-  getById: async (id: string): Promise<Review> => {
-    const response = await fetchWithAuth(`/api/reviews/${id}`);
-    return handleResponse<Review>(response);
+
+  getByUser: async (userId: string, limit?: number, offset?: number): Promise<PaginatedResponse<Review>> => {
+    const params = new URLSearchParams();
+    params.append('user_id', userId);
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    
+    const response = await fetchWithAuth(`/api/reviews?${params}`);
+    return handleResponse<PaginatedResponse<Review>>(response);
+  },
+
+  getCurrentUserReviews: async (limit?: number, offset?: number): Promise<PaginatedResponse<Review>> => {
+    const params = new URLSearchParams();
+    params.append('current_user', 'true');
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    
+    const response = await fetchWithAuth(`/api/reviews?${params}`);
+    return handleResponse<PaginatedResponse<Review>>(response);
   },
   
   create: async (data: CreateReviewRequest): Promise<Review> => {

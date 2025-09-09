@@ -3,6 +3,7 @@ use serde_json::json;
 use crate::entities::{CreateReviewRequest, UpdateReviewRequest};
 use crate::repositories::{ReviewRepository, BookRepository, UserRepository};
 use crate::use_cases::{ReviewUseCase, AuthUseCase};
+use crate::dtos::common::ApiResponse;
 
 // Helper function to extract user ID from token
 async fn get_user_id_from_request(req: &Request, ctx: &RouteContext<()>) -> Result<String> {
@@ -44,26 +45,18 @@ pub async fn list(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     
     match review_use_case.list_reviews(book_id, limit, offset).await {
         Ok(reviews) => {
-            Response::from_json(&json!({
-                "success": true,
-                "data": reviews,
-                "pagination": {
-                    "total": reviews.len(),
-                    "limit": limit.unwrap_or(20),
-                    "offset": offset.unwrap_or(0)
-                }
-            }))
+            let api_response = ApiResponse::success(reviews);
+            Response::from_json(&api_response)
         },
         Err(e) => {
             console_log!("Review list error: {:?}", e);
-            Response::from_json(&json!({
-                "success": false,
-                "error": {
-                    "code": "REVIEW_LIST_FAILED",
-                    "message": "レビューの取得に失敗しました",
-                    "details": format!("{:?}", e)
-                }
-            })).map(|r| r.with_status(500))
+            let empty_response: Vec<crate::entities::ReviewResponse> = vec![];
+            let mut api_response = ApiResponse::error(500, "REVIEW_LIST_FAILED", "レビューの取得に失敗しました", empty_response);
+            // Add error details
+            if let Some(ref mut error) = api_response.meta.error {
+                error.details = Some(serde_json::json!({"rust_error": format!("{:?}", e)}));
+            }
+            Response::from_json(&api_response).map(|r| r.with_status(500))
         }
     }
 }
