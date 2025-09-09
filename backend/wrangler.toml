@@ -16,3 +16,6 @@ migrations_dir = "migrations"
 
 [vars]
 JWT_SECRET = "1RTcrEpL0OEMMNDor9fa3HrJ9aRyk3IgRPgDmeHpUXI6X7dzf0OHWC2PhJOkrq5o"
+
+[build]
+command = "cargo install --path ../../worker-build && worker-build --release"
