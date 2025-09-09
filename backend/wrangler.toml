@@ -1,6 +1,6 @@
 name = "bireco-backend"
 main = "build/worker/shim.mjs"
-compatibility_date = "2024-09-01"
+compatibility_date = "2025-09-09"
 
 [env.development]
 name = "bireco-backend-dev"
@@ -18,4 +18,4 @@ migrations_dir = "migrations"
 JWT_SECRET = "1RTcrEpL0OEMMNDor9fa3HrJ9aRyk3IgRPgDmeHpUXI6X7dzf0OHWC2PhJOkrq5o"
 
 [build]
-command = "cargo install --path ../../worker-build && worker-build --release"
+command = "cargo install -q worker-build && worker-build --release"
