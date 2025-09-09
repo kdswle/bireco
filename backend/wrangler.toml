@@ -5,8 +5,14 @@ compatibility_date = "2025-09-09"
 [env.development]
 name = "bireco-backend-dev"
 
+[env.development.vars]
+ALLOWED_ORIGIN = "http://localhost:5173"
+
 [env.production]
 name = "bireco-backend"
+
+[env.production.vars]
+ALLOWED_ORIGIN = "https://bireco.noisaria.com"
 
 [[d1_databases]]
 binding = "DB"

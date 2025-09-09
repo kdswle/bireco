@@ -6,9 +6,15 @@ mod external;
 mod repositories;
 mod use_cases;
 
-fn add_cors_headers(mut response: Response) -> Result<Response> {
+fn add_cors_headers(mut response: Response, env: &Env) -> Result<Response> {
     let headers = response.headers_mut();
-    headers.set("Access-Control-Allow-Origin", "http://localhost:5173")?;
+    
+    // Get allowed origin from environment variable, fallback to localhost for development
+    let allowed_origin = env.var("ALLOWED_ORIGIN")
+        .map(|v| v.to_string())
+        .unwrap_or_else(|_| "http://localhost:5173".to_string());
+    
+    headers.set("Access-Control-Allow-Origin", &allowed_origin)?;
     headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")?;
     headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")?;
     headers.set("Access-Control-Allow-Credentials", "true")?;
@@ -19,7 +25,7 @@ fn add_cors_headers(mut response: Response) -> Result<Response> {
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // Handle preflight requests
     if req.method() == Method::Options {
-        return add_cors_headers(Response::empty()?);
+        return add_cors_headers(Response::empty()?, &env);
     }
 
     let router = Router::new();
@@ -40,8 +46,8 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .post_async("/api/reviews", handlers::reviews::create)
         .put_async("/api/reviews/:id", handlers::reviews::update)
         .delete_async("/api/reviews/:id", handlers::reviews::delete)
-        .run(req, env)
+        .run(req, env.clone())
         .await?;
 
-    add_cors_headers(response)
+    add_cors_headers(response, &env)
 }
