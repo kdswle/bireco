@@ -11,7 +11,7 @@ name = "bireco-backend"
 [[d1_databases]]
 binding = "DB"
 database_name = "bireco"
-database_id = "61c194c3-a9bf-41c9-ad42-8962a133f11d"
+database_id = "2bdfb5a0-3117-4547-8455-5b99e8312492"
 migrations_dir = "migrations"
 
 [vars]
@@ -19,3 +19,7 @@ JWT_SECRET = "1RTcrEpL0OEMMNDor9fa3HrJ9aRyk3IgRPgDmeHpUXI6X7dzf0OHWC2PhJOkrq5o"
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"
+
+[[routes]]
+pattern = "api.bireco.noisaria.com"
+custom_domain = true
