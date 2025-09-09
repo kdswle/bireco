@@ -7,7 +7,6 @@ import {
   CardContent,
   Grid,
   Button,
-  Chip,
   Avatar,
   CardActionArea,
 } from '@mui/material';
@@ -131,7 +130,7 @@ export function HomePage() {
         {latestReviews && latestReviews.length > 0 ? (
           <Grid container spacing={3}>
             {latestReviews.map((review: Review) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={review.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={review.id}>
                 <Card
                   elevation={2}
                   sx={{
@@ -252,7 +251,7 @@ export function HomePage() {
         </Typography>
         
         <Grid container spacing={4}>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Card elevation={1} sx={{ height: '100%', textAlign: 'center', p: 2 }}>
               <BookIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
               <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -264,7 +263,7 @@ export function HomePage() {
             </Card>
           </Grid>
           
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Card elevation={1} sx={{ height: '100%', textAlign: 'center', p: 2 }}>
               <StarIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
               <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -276,7 +275,7 @@ export function HomePage() {
             </Card>
           </Grid>
           
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Card elevation={1} sx={{ height: '100%', textAlign: 'center', p: 2 }}>
               <TrendingIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
               <Typography variant="h6" gutterBottom fontWeight="bold">

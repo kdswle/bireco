@@ -11,11 +11,9 @@ import {
   Box,
   Alert,
   CircularProgress,
-  Chip,
-  Snackbar,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { booksApi, reviewsApi, draftsApi } from '../lib/api';
+import { booksApi, reviewsApi } from '../lib/api';
 import type { Book } from '../types';
 
 const MarkdownEditor = styled('textarea')(({ theme }) => ({
@@ -55,7 +53,7 @@ const PreviewContainer = styled(Box)(({ theme }) => ({
   '& code': {
     backgroundColor: theme.palette.action.hover,
     padding: '2px 4px',
-    borderRadius: theme.shape.borderRadius / 2,
+    borderRadius: (theme.shape.borderRadius as number) / 2,
     fontFamily: 'monospace',
   },
 }));
@@ -74,9 +72,6 @@ const CreateReviewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-  const [draftId, setDraftId] = useState<string | null>(null);
-  const [showSaveNotification, setShowSaveNotification] = useState(false);
 
   // Auto-save draft functionality (temporarily disabled)
   // useEffect(() => {

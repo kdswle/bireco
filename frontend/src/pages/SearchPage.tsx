@@ -28,7 +28,7 @@ import type { BookSearchResult } from '../types';
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { } = useAuth();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
 
   const { data: searchResults, isLoading, error, refetch } = useQuery({
@@ -147,7 +147,7 @@ export function SearchPage() {
         
         <Grid container spacing={3} sx={{ mt: 1 }}>
           {searchResults.map((book, index) => (
-            <Grid item xs={12} sm={6} md={4} key={`${book.source_id}-${index}`}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`${book.source_id}-${index}`}>
               <Card
                 elevation={2}
                 sx={{

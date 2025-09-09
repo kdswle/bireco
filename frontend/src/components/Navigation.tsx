@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
     AppBar,
     Toolbar,
@@ -23,7 +23,6 @@ import { useAuth } from "../contexts/AuthContext";
 export function Navigation() {
     const { user, isAuthenticated, logout } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -143,7 +142,6 @@ export function Navigation() {
                         <Box display="flex" alignItems="center" gap={1}>
                             <Button
                                 size="large"
-                                edge="end"
                                 onClick={handleProfileMenuOpen}
                                 color="inherit"
                                 startIcon={
