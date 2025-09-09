@@ -1,0 +1,12 @@
+{
+  "name": "bireco-backend",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "worker-build",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0"
+  }
+}

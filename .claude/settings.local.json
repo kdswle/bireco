@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(npm install)",
+      "Bash(ls:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(cargo init:*)",
+      "Bash(source:*)",
+      "Bash(cargo --version)",
+      "Bash(rustup:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run build:*)",
+      "Bash(wrangler:*)",
+      "Bash(cargo install:*)",
+      "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")",
+      "Bash(worker-build:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(cargo:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(/Users/shono/.cargo/bin/cargo build)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(npm run dev:*)",
+      "Bash(/Users/shono/.cargo/bin/worker-build:*)",
+      "Bash(export:*)"
+    ],
+    "deny": []
+  }
+}

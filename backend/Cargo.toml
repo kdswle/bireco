@@ -1,0 +1,31 @@
+[package]
+name = "bireco-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+worker = { version = "0.6.1", features = ["d1"] }
+wasm-bindgen = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde", "js"] }
+chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+argon2 = { version = "0.5", features = ["std"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+getrandom = { version = "0.2", features = ["js"] }
+sha2 = "0.10"
+hmac = "0.12"
+base64 = "0.21"
+reqwest = { version = "0.12", features = ["json"] }
+regex = "1.10"
+urlencoding = "2.1"
+js-sys = "0.3"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+]

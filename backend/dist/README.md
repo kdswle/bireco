@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "bireco-backend" generated at 2025-09-09T00:51:03.812Z.

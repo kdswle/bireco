@@ -1,0 +1,78 @@
+以下にOpenSearchのAPIドキュメントを公式からコピーしておきます。
+
+4. OpenSearch
+（1）概要
+OpenSearch により、外部機関等が本サービスを検索し、結果を取得するためのインタフ
+ェースである。
+図 4-1 OpenSearch 提供インタフェースの概要
+OpenSearch は URL で検索リクエストを発行し、結果を RSS2.0 形式で取得するもので
+あり、その基本仕様は以下に記載されている。本サービス側の対応バージョンは 1.0 であ
+る。
+https://github.com/dewitt/opensearch
+（2）リクエスト形式
+リクエスト形式は以下の URL である。
+ https://ndlsearch.ndl.go.jp/api/opensearch?dpid=[dpid]&title=[title]&...
+（3）引数（[query]）の形式
+リクエストの中で指定できる項目は以下である。
+表 4-1 OpenSearch 検索項目
+No. 参照名 内容 一致条件 複数
+1 dpid データプロバイダ ID、データグループ ID、コレ
+クションコード、AcessRights
+完全一致 ○
+2 dpgroupid データプロバイダグループID 完全一致 ×
+3 any すべての項目を対象に検索 部分一致 ○
+4 title タイトル 部分一致 ○
+5 creator 作成者 部分一致 ○
+6 publisher 出版者 部分一致 ○
+7 digitized_publisher デジタル化した製作者 部分一致 ○
+8 ndc 分類（NDC、NDLC） 前方一致 ×
+9 from 開始出版年月日
+（YYYY、YYYY-MM、YYYY-MM-DD）
+×
+国立国会図書館
+サーチ
+各機関 OpenSearch
+検索結果（RSS2.0）
+OpenSearch-API
+検索リクエスト（URL）
+外部提供インタフェース仕様書（第 1.3 版）
+2025.3.26
+13
+10 until 終了出版年月日
+（YYYY、YYYY-MM、YYYY-MM-DD）
+×
+11 cnt 出力レコード上限値（省略時は200 とする） ×
+12 idx レコード取得開始位置（省略時は1 とする） ×
+13 isbn ISBN
+10 桁または13 桁で入力した場合は、10 桁、13 桁
+の両方に変換して完全一致検索を行う。
+それ以外の桁で入力した場合は前方一致検索を行
+う。
+完全一致
+または
+前方一致
+×
+14 mediatype mediaType 一覧参照 完全一致 ○
+注）項目間の論理条件は全て AND である。
+注）一つの検索項目内に空白区切り（半角スぺ―ス）でキーワードを複数指定することがで
+きる。
+この場合、dpid と mediatype に関しては OR 検索、他は AND 検索となる。dpid のみ
+指定した検索はできない。
+注）引数（パラメータ）誤りの場合には検索結果ゼロ件となる。
+注）from,until に関しては、YYYY、YYYY-MM、あるいは YYYY-MM-DD 形式で指定が
+可能である。fromとuntilの両方を指定する場合、両方の指定フォーマットは同じ（from
+が YYYY-MM なら、until も YYYY-MM 形式で指定する。）とする必要がある。
+（4）データの返戻件数
+cnt パラメータで指定した件数までが返却される。デフォルトの返戻件数は 200 件で、一
+度に取得できる最大件数は 500 件である。ただし、検索負荷回避のための制約により、idx
+パラメータと cnt パラメータと使って 501件目以降を指定した場合でも該当のデータを取得
+することはできない。
+（5）返戻形式
+データの返戻形式は RSS2.0 を本サービス用に拡張したものである。
+（6）リクエスト例
+・ 例１．タイトルに「マリーアントワネット」を含むもの
+https://ndlsearch.ndl.go.jp/api/opensearch?title=%e3%83%9e%e3%83%aa%e
+3%83%bc%e3%82%a2%e3%83%b3%e3%83%88%e3%83%af%e3%83%8d%e3%83%83%e3%83%88
+・ 例２．青空文庫の中で、著者に「夏目」を含むもの
+https://ndlsearch.ndl.go.jp/api/opensearch?dpid=aozora&creator=%e5%a4%
+8f%e7%9b%ae
